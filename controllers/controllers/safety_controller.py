@@ -16,7 +16,7 @@ class SafetyController(Node):
 
         # get parameter values
         self.safety_cutoff_distance = self.get_parameter("safety_cutoff_distance").get_parameter_value().double_value
-        self.danger_zone_points_thres = self.get_parameter("danger_zone_points_thres").get_parameter_value().int_value
+        self.danger_zone_points_thres = self.get_parameter("danger_zone_points_thres").get_parameter_value().integer_value
         self.max_steering_angle = self.get_parameter("max_steering_angle").get_parameter_value().double_value
         self.max_deceleration = self.get_parameter("max_deceleration").get_parameter_value().double_value
 
@@ -34,7 +34,7 @@ class SafetyController(Node):
         including the cutoff distance, is larger than a certrain threshold
         """
         # TODO: predict the trajectory of the car given the message received
-        
+
         # TODO: filter the points of the latest scan within the cutoff distance from the predicted trajectory (computed using the max acceleration),
         # count them, and if they are above a certain threshold the car is in danger
         pass

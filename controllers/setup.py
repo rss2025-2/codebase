@@ -13,8 +13,8 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
-        ('share/wall_follower/launch', glob.glob(os.path.join('launch', '*launch.xml'))),
-        ('share/wall_follower/launch', glob.glob(os.path.join('launch', '*launch.py')))
+        ('share/controllers/launch', glob.glob(os.path.join('launch', '*launch.xml'))),
+        ('share/controllers/launch', glob.glob(os.path.join('launch', '*launch.py')))
     ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -25,7 +25,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'safety_controller = safety_controller.safety_controller:main',
+            'safety_controller = controllers.safety_controller:main',
         ],
     },
 )
