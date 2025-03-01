@@ -26,6 +26,7 @@ setup(
     entry_points={
         'console_scripts': [
             'safety_controller = controllers.safety_controller:main',
+            'keyboard_controller = controllers.keyboard_controller:main',
         ],
     },
 )
