@@ -8,13 +8,13 @@ def generate_launch_description():
         output = "screen",
         name = "safety_controller",
         parameters=[
-            {"safety_cutoff_distance": 0.5},
+            {"safety_cutoff_distance": 0.1},
             {"safety_scan_distance": 1.0},
             {"safety_scan_angle_pi": 0.5},
             {"point_num_thres": 5},
             {"car_length": 0.5},
             {"max_steering_angle": 2.5},
-            {"max_deceleration": 1.0},
+            {"max_deceleration": 5.0},
             {"max_danger_velocity": 0.5},
             {"forward_message": True},
             {"safety_time": 0.001}

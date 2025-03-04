@@ -18,11 +18,11 @@ class WallFollower(Node):
         super().__init__("wall_follower")
         # Declare parameters to make them available for use
         # DO NOT MODIFY THIS! 
-        self.declare_parameter("scan_topic", "default")
-        self.declare_parameter("drive_topic", "default")
-        self.declare_parameter("side", "default")
-        self.declare_parameter("velocity", "default")
-        self.declare_parameter("desired_distance", "default")
+        self.declare_parameter("scan_topic", "scan")
+        self.declare_parameter("drive_topic", "/vesc/high_level/input/nav_2")
+        self.declare_parameter("side", -1)
+        self.declare_parameter("velocity", 0.5)
+        self.declare_parameter("desired_distance", 0.5)
         # self.declare_parameter("front_ignore_angle_pi", 0.25)
         # self.declare_parameter("kp", 1.0)
         # self.declare_parameter("ki", 0.0)
@@ -32,6 +32,7 @@ class WallFollower(Node):
         # Fetch constants from the ROS parameter server
         # DO NOT MODIFY THIS! This is necessary for the tests to be able to test varying parameters!
         self.SCAN_TOPIC = self.get_parameter('scan_topic').get_parameter_value().string_value
+        print(self.SCAN_TOPIC)
         self.DRIVE_TOPIC = self.get_parameter('drive_topic').get_parameter_value().string_value
         self.SIDE = self.get_parameter('side').get_parameter_value().integer_value
         self.VELOCITY = self.get_parameter('velocity').get_parameter_value().double_value
@@ -44,9 +45,9 @@ class WallFollower(Node):
         
         # custom params
         self.front_angle_pi = 0.25
-        self.kp = 5.0
-        self.ki = 0.0 # can't have an integral controller since it doesn't restart the node each time and I don't know when the test stops so the becomes huge
-        self.kd = 0.5
+        self.kp = 20
+        self.ki = 0.01 # can't have an integral controller since it doesn't restart the node each time and I don't know when the test stops so the becomes huge
+        self.kd = 2
         self.inlier_threshold = 0.001
         self.num_ransac_iters = 15
         self.inlier_num = 20
@@ -196,7 +197,7 @@ class WallFollower(Node):
         return (y1-y2, x2-x1, x1*y2-x2*y1), abs(x1*y2-x2*y1)/math.sqrt((y1-y2)**2+(x2-x1)**2)
 
     def pid_update(self, distance):
-        # self.get_logger().info(f'Distance: {distance}, desired distance: {self.DESIRED_DISTANCE}, side: {self.SIDE}')
+        self.get_logger().info(f'Distance: {distance}, desired distance: {self.DESIRED_DISTANCE}, side: {self.SIDE}')
         new_error = self.SIDE*(distance - self.DESIRED_DISTANCE) # signed error to work with controller in both ways
         if(not self.first_scan):
             error_diff = new_error - self.error
@@ -205,8 +206,8 @@ class WallFollower(Node):
             self.error_integral = self.error_integral + self.error*self.dt
             self.error_derivative = error_diff/self.dt
         control = self.kp*self.error + self.ki*self.error_integral + self.kd*self.error_derivative
-        # self.get_logger().info(f'Control: {control}')
-        # self.get_logger().info(f'Error: {self.error}, Integral: {self.error_integral}, Derivative: {self.error_derivative}')
+        self.get_logger().info(f'Control: {control}')
+        self.get_logger().info(f'Error: {self.error}, Integral: {self.error_integral}, Derivative: {self.error_derivative}')
         return control
 
     def drive_command(self, steering):
@@ -217,6 +218,7 @@ class WallFollower(Node):
         drive_msg.drive.speed = self.VELOCITY
         drive_msg.drive.acceleration = 0.0 # reach needed velocity as fast as possible
         drive_msg.drive.jerk = 0.0
+        self.get_logger().info(f'Output {steering}')
         self.control_pub.publish(drive_msg)
     
     def parameters_callback(self, params):
