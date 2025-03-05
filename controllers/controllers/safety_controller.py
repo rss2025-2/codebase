@@ -7,13 +7,13 @@ from sensor_msgs.msg import LaserScan
 from std_msgs.msg import Header
 
 # Constant: the cone width (in degrees) to consider the central region of the lidar
-CENTER_ANGLE_DEG = 30  # use center 30°: ±15° around 0 radians
+CENTER_ANGLE_DEG = 180  # use center 30°: ±15° around 0 radians
 
 class SafetyController(Node):
     def __init__(self):
         super().__init__('safety_controller')
         # Declare ROS parameters
-        self.declare_parameter("safety_cutoff_distance", 0.5)
+        self.declare_parameter("safety_cutoff_distance", 1.0)
         self.declare_parameter("forward_message", True)
         self.declare_parameter("safety_time", 0.01)  # period (in seconds) for safety timer callback
         
@@ -25,17 +25,17 @@ class SafetyController(Node):
         # Create publishers and subscribers
         self.input_drive_sub = self.create_subscription(
             AckermannDriveStamped,
-            "drive_input_topic",
+            "/vesc/high_level/input/nav_2",
             self.input_drive_callback,
             10)
         self.scan_sub = self.create_subscription(
             LaserScan,
-            "scan_topic",
+            "scan",
             self.scan_callback,
             10)
         self.safety_pub = self.create_publisher(
             AckermannDriveStamped,
-            "safety_drive_topic",
+            "/vesc/high_level/input/nav_1",
             10)
         
         # Member variables for storing latest drive command and latest lidar safety reading  
@@ -45,7 +45,8 @@ class SafetyController(Node):
         # Safety check timer: periodically check if we should override drive commands.
         self.safety_timer = self.create_timer(
             self.safety_time,
-            self.safety_callback)
+            self.safety_callback
+        )
 
     def scan_callback(self, scan_msg):
         """
@@ -69,6 +70,7 @@ class SafetyController(Node):
         Simply store the last drive command and, if no immediate obstacle is detected,
         forward the incoming drive command.
         """
+        self.get_logger().info("Got a drive message")
         self.last_drive_msg = drive_msg
         if self.forward_message:
             # If no obstacle is detected (or scan has not yet produced a valid minimum), publish the incoming command.
@@ -80,6 +82,7 @@ class SafetyController(Node):
         Check whether the minimum range in the central cone is less than the safety cutoff.
         If so, publish a safe (stop) command.
         """
+        self.get_logger().info(f"{self.min_scan_range}, cutoff: {self.safety_cutoff_distance}")
         if self.min_scan_range is None:
             return  # No valid range data yet
         if self.min_scan_range < self.safety_cutoff_distance:

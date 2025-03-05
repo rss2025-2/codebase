@@ -8,7 +8,7 @@ def generate_launch_description():
         output = "screen",
         name = "safety_controller",
         parameters=[
-            {"safety_cutoff_distance": 0.1},
+            {"safety_cutoff_distance": 0.3},
             {"safety_scan_distance": 1.0},
             {"safety_scan_angle_pi": 0.5},
             {"point_num_thres": 5},
@@ -51,5 +51,5 @@ def generate_launch_description():
     )
     return LaunchDescription([
         safety_controller_node,
-        keyboard_controller_node
+        # keyboard_controller_node
     ])
