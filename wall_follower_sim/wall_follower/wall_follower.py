@@ -92,13 +92,14 @@ class WallFollower(Node):
         # TODO: Write your callback functions here
         # Time increment for the scan.
         self.hz = 20
-        
+
         # PID controller variables.
         self.kp = self.get_parameter('kp').get_parameter_value().double_value
         self.ki = self.get_parameter('ki').get_parameter_value().double_value
         self.kd = self.get_parameter('kd').get_parameter_value().double_value
         # Forward wall slope (m) control variable.
         self.km = 10
+        self.turn_rad = 1.0
 
         # PID controller variable tracking.
         self.prev_error = 0
@@ -199,8 +200,7 @@ class WallFollower(Node):
                 (scan_polar_vectors[1,:] <= forward_cutoff)
         ]
         # Prunes points that are too far away.
-        turn_rad = 1.0
-        e_stop_dist = (self.DESIRED_DISTANCE + turn_rad) + self.VELOCITY/hz
+        e_stop_dist = (self.DESIRED_DISTANCE + self.turn_rad) + self.VELOCITY/hz
         f_wall_pts = len(forward_wall[0,:])
         forward_wall = forward_wall[:,
             forward_wall[0,:] <= (1 + np.tan(forward_wall[1, :])) * (e_stop_dist + 2 * self.VELOCITY/hz)
@@ -221,8 +221,8 @@ class WallFollower(Node):
         if dist < e_stop_dist:
             self.get_logger().info(f"!!!!!!!!AVOIDING COLLISION!!!!!!")
             # Calculates the steering angle.
-            if dist - turn_rad > 0:
-                steering_angle += -self.km * self.VELOCITY/(dist - turn_rad) * np.abs(m)
+            if dist - self.turn_rad > 0:
+                steering_angle += -self.km * self.VELOCITY/(dist - self.turn_rad) * np.abs(m)
             else:
                 steering_angle += -np.inf
             error = (dist - self.DESIRED_DISTANCE)
