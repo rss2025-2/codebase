@@ -65,6 +65,11 @@ class WallFollower(Node):
         self.declare_parameter("velocity", 0.5)
         self.declare_parameter("desired_distance", 1.0)
 
+        # PID controller parameters
+        self.declare_parameter("kp", 3)
+        self.declare_parameter("ki", 0.1)
+        self.declare_parameter("kd", 2)
+
         # Fetch constants from the ROS parameter server
         # DO NOT MODIFY THIS! This is necessary for the tests to be able to test varying parameters!
         self.SCAN_TOPIC = self.get_parameter('scan_topic').get_parameter_value().string_value
@@ -84,7 +89,18 @@ class WallFollower(Node):
         # a publisher for our line marker
         self.line_pub = self.create_publisher(Marker, "/wall", 1)
 
-        # TODO: Write your callback functions here    
+        # TODO: Write your callback functions here
+        # Time increment for the scan.
+        self.hz = 20
+        
+        # PID controller variables.
+        self.kp = self.get_parameter('kp').get_parameter_value().double_value
+        self.ki = self.get_parameter('ki').get_parameter_value().double_value
+        self.kd = self.get_parameter('kd').get_parameter_value().double_value
+        # Forward wall slope (m) control variable.
+        self.km = 10
+
+        # PID controller variable tracking.
         self.prev_error = 0
         self.integral_error = 0
 
@@ -109,7 +125,7 @@ class WallFollower(Node):
 
     def scan_callback(self, msg):
         # Calculates scan frequency.
-        hz = 1/msg.time_increment if msg.time_increment > 0 else 20
+        hz = 1/msg.time_increment if msg.time_increment > 0 else self.hz
         # Get the angles of the scan.
         angles = np.arange(msg.angle_min, msg.angle_max, msg.angle_increment)
         # Asserts angles and distances have the same length.
@@ -156,11 +172,11 @@ class WallFollower(Node):
 
             # Calculates the error.
             error = dist - self.DESIRED_DISTANCE
-            P = 20 * error
-            # Calculates the derivative.
-            D = 1 * (self.prev_error - error) * hz
+            P = self.kp * error
             # Integral component.
-            I = 0.2 * self.integral_error
+            I = self.ki * self.integral_error
+            # Calculates the derivative.
+            D = self.kd * (self.prev_error - error) * hz
 
             # Calculates the steering angle.
             steering_angle = P + I - D
@@ -202,12 +218,11 @@ class WallFollower(Node):
         # If we are within lookahead of the wall in front, make this wall on our SIDE.
         # Also, checks for the angle of the forward wall towards us and adjust avoidance
         # accordingly.
-        km = 10
         if dist < e_stop_dist:
             self.get_logger().info(f"!!!!!!!!AVOIDING COLLISION!!!!!!")
             # Calculates the steering angle.
             if dist - turn_rad > 0:
-                steering_angle += -km * self.VELOCITY/(dist - turn_rad) * np.abs(m)
+                steering_angle += -self.km * self.VELOCITY/(dist - turn_rad) * np.abs(m)
             else:
                 steering_angle += -np.inf
             error = (dist - self.DESIRED_DISTANCE)
