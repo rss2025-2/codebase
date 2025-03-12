@@ -62,13 +62,13 @@ class WallFollower(Node):
         self.declare_parameter("scan_topic", "scan")
         self.declare_parameter("drive_topic", "drive_topic")
         self.declare_parameter("side", 1)
-        self.declare_parameter("velocity", 0.5)
+        self.declare_parameter("velocity", 0.6)
         self.declare_parameter("desired_distance", 1.0)
 
         # PID controller parameters
-        self.declare_parameter("kp", 3)
+        self.declare_parameter("kp", 3.3)
         self.declare_parameter("ki", 0.1)
-        self.declare_parameter("kd", 2)
+        self.declare_parameter("kd", 1)
 
         # Fetch constants from the ROS parameter server
         # DO NOT MODIFY THIS! This is necessary for the tests to be able to test varying parameters!
@@ -98,7 +98,7 @@ class WallFollower(Node):
         self.ki = self.get_parameter('ki').get_parameter_value().double_value
         self.kd = self.get_parameter('kd').get_parameter_value().double_value
         # Forward wall slope (m) control variable.
-        self.km = 10
+        self.km = 50
         self.turn_rad = 1.0
 
         # PID controller variable tracking.
@@ -231,7 +231,7 @@ class WallFollower(Node):
         self.prev_error = error
         # Updates the integral error.
         self.integral_error += error / hz
-        self.integral_error %= self.DESIRED_DISTANCE
+        self.integral_error %= (self.DESIRED_DISTANCE / 2)
 
         # Clips and gives direction to the steering angle.
         steering_angle = np.clip(self.SIDE * steering_angle, -np.radians(90), np.radians(90))

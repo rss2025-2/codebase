@@ -13,7 +13,7 @@ class SafetyController(Node):
     def __init__(self):
         super().__init__('safety_controller')
         # Declare ROS parameters
-        self.declare_parameter("safety_cutoff_distance", 1.0)
+        self.declare_parameter("safety_cutoff_distance", 0.2)
         self.declare_parameter("forward_message", True)
         self.declare_parameter("safety_time", 0.01)  # period (in seconds) for safety timer callback
         
