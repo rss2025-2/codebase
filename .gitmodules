@@ -1,0 +1,3 @@
+[submodule "rosbags"]
+	path = rosbags
+	url = https://github.com/rss2025-2/rosbags.git
