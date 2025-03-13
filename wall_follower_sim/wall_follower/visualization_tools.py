@@ -4,7 +4,7 @@ from visualization_msgs.msg import Marker
 class VisualizationTools:
 
     @staticmethod
-    def plot_line(x, y, publisher, color = (1., 0., 0.), frame = "/base_link"):
+    def plot_line(x, y, publisher, stamp, color = (1., 0., 0.), frame = "/base_link"):
         """
         Publishes the points (x, y) to publisher
         so they can be visualized in rviz as
@@ -22,6 +22,7 @@ class VisualizationTools:
         line_strip = Marker()
         line_strip.type = Marker.LINE_STRIP
         line_strip.header.frame_id = frame
+        line_strip.header.stamp = stamp
 
         # Set the size and color
         line_strip.scale.x = 0.1
@@ -42,8 +43,8 @@ class VisualizationTools:
         publisher.publish(line_strip)
     
     @staticmethod
-    def visualize_wall(a, b, c, publisher, color = (0.0, 0.0, 1.0), frame = '/base_link'):
+    def visualize_wall(a, b, c, publisher, stamp, color = (0.0, 0.0, 1.0), frame = '/base_link'):
         if(abs(b) > 0.0001):
-            VisualizationTools.plot_line([-5.0,5.0],[-(a*(-5.0)+c)/b,-(a*5.0+c)/b], publisher, color, frame)
+            VisualizationTools.plot_line([-5.0,5.0],[-(a*(-5.0)+c)/b,-(a*5.0+c)/b], publisher, stamp, color, frame)
         else:
-            VisualizationTools.plot_line([-c/a, -c/a],[-5.0, 5.0], publisher, color, frame)
+            VisualizationTools.plot_line([-c/a, -c/a],[-5.0, 5.0], publisher, stamp, color, frame)
