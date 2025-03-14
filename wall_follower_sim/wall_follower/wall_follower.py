@@ -62,13 +62,14 @@ class WallFollower(Node):
         self.declare_parameter("scan_topic", "scan")
         self.declare_parameter("drive_topic", "drive_topic")
         self.declare_parameter("side", 1)
-        self.declare_parameter("velocity", 0.6)
+        self.declare_parameter("velocity", 0.5)
         self.declare_parameter("desired_distance", 1.0)
 
         # PID controller parameters
         self.declare_parameter("kp", 3.3)
         self.declare_parameter("ki", 0.1)
-        self.declare_parameter("kd", 1)
+        self.declare_parameter("kd", 2.0)
+        self.declare_parameter("km", 50.0)
 
         # Fetch constants from the ROS parameter server
         # DO NOT MODIFY THIS! This is necessary for the tests to be able to test varying parameters!
@@ -84,22 +85,23 @@ class WallFollower(Node):
         self.add_on_set_parameters_callback(self.parameters_callback)
   
         # TODO: Initialize your publishers and subscribers here
-        self.scan_sub = self.create_subscription(LaserScan, self.SCAN_TOPIC, self.scan_callback, 10)
-        self.drive_pub = self.create_publisher(AckermannDriveStamped, self.DRIVE_TOPIC, 10)
+        self.scan_sub = self.create_subscription(LaserScan, self.SCAN_TOPIC, self.scan_callback, 3)
+        self.drive_pub = self.create_publisher(AckermannDriveStamped, self.DRIVE_TOPIC, 3)
         # a publisher for our line marker
         self.line_pub = self.create_publisher(Marker, "/wall", 1)
 
         # TODO: Write your callback functions here
         # Time increment for the scan.
-        self.hz = 20
+        self.hz = 2
 
         # PID controller variables.
         self.kp = self.get_parameter('kp').get_parameter_value().double_value
         self.ki = self.get_parameter('ki').get_parameter_value().double_value
         self.kd = self.get_parameter('kd').get_parameter_value().double_value
         # Forward wall slope (m) control variable.
-        self.km = 50
+        self.km = self.get_parameter('km').get_parameter_value().double_value
         self.turn_rad = 1.0
+        self.MAX_TURN = 30.0
 
         # PID controller variable tracking.
         self.prev_error = 0
@@ -115,13 +117,13 @@ class WallFollower(Node):
         for param in params:
             if param.name == 'side':
                 self.SIDE = param.value
-                self.get_logger().info(f"Updated side to {self.SIDE}")
+                self.get_logger().debug(f"Updated side to {self.SIDE}")
             elif param.name == 'velocity':
                 self.VELOCITY = param.value
-                self.get_logger().info(f"Updated velocity to {self.VELOCITY}")
+                self.get_logger().debug(f"Updated velocity to {self.VELOCITY}")
             elif param.name == 'desired_distance':
                 self.DESIRED_DISTANCE = param.value
-                self.get_logger().info(f"Updated desired_distance to {self.DESIRED_DISTANCE}")
+                self.get_logger().debug(f"Updated desired_distance to {self.DESIRED_DISTANCE}")
         return SetParametersResult(successful=True)
 
     def scan_callback(self, msg):
@@ -177,16 +179,16 @@ class WallFollower(Node):
             # Integral component.
             I = self.ki * self.integral_error
             # Calculates the derivative.
-            D = self.kd * (self.prev_error - error) * hz
+            D = self.kd * (error - self.prev_error) * hz
 
             # Calculates the steering angle.
-            steering_angle = P + I - D
+            steering_angle = P + I + D
 
             # If half the wall disappeared start turning in the direction of the wall.
             kl = 2
-            if len(tracked_wall[0]) < 0.5 * t_wall_len:
-                self.get_logger().info(f"!!!!!!!!WALL LOST!!!!!!")
-                steering_angle += kl * 2 * (0.5 - len(tracked_wall[0])/t_wall_len) * np.radians(90)
+            if len(tracked_wall[0]) < 0.3 * t_wall_len:
+                self.get_logger().debug(f"!!!!!!!!WALL LOST!!!!!!")
+                steering_angle += kl * 2 * (0.3 - len(tracked_wall[0])/t_wall_len) * np.radians(self.MAX_TURN)
 
         # Gets the forward wall points.
         f_cut = 22.5
@@ -219,25 +221,26 @@ class WallFollower(Node):
         # Also, checks for the angle of the forward wall towards us and adjust avoidance
         # accordingly.
         if dist < e_stop_dist:
-            self.get_logger().info(f"!!!!!!!!AVOIDING COLLISION!!!!!!")
+            self.get_logger().debug(f"!!!!!!!!AVOIDING COLLISION!!!!!!")
             # Calculates the steering angle.
             if dist - self.turn_rad > 0:
                 steering_angle += -self.km * self.VELOCITY/(dist - self.turn_rad) * np.abs(m)
             else:
                 steering_angle += -np.inf
             error = (dist - self.DESIRED_DISTANCE)
+            self.integral_error = 0
 
         # Updates the previous error.
         self.prev_error = error
         # Updates the integral error.
         self.integral_error += error / hz
-        self.integral_error %= (self.DESIRED_DISTANCE / 2)
+        self.integral_error = np.clip(self.integral_error, -self.DESIRED_DISTANCE / 3, self.DESIRED_DISTANCE / 3)
 
         # Clips and gives direction to the steering angle.
-        steering_angle = np.clip(self.SIDE * steering_angle, -np.radians(90), np.radians(90))
+        steering_angle = np.clip(self.SIDE * steering_angle, -np.radians(self.MAX_TURN), np.radians(self.MAX_TURN))
 
         # Publishes the drive message.
-        # self.get_logger().info(f"Steering angle: {steering_angle}")
+        # self.get_logger().debug(f"Steering angle: {steering_angle}")
         self.drive(self.VELOCITY, steering_angle)
 
 

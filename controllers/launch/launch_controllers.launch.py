@@ -12,21 +12,21 @@ def generate_launch_description():
             {"safety_scan_distance": 1.0},
             {"safety_scan_angle_pi": 0.5},
             {"point_num_thres": 5},
-            {"car_length": 0.5},
-            {"max_steering_angle": 2.5},
-            {"max_deceleration": 5.0},
+            {"car_length": 0.8},
+            {"max_steering_angle": 0.5},
+            {"max_deceleration": 0.8},
             {"max_danger_velocity": 0.5},
             {"forward_message": True},
-            {"safety_time": 0.001}
+            {"safety_time": 0.00001}
         ],
         remappings=[
             ("scan_topic", "/scan"),
             # for real racecar
-            # ("drive_input_topic", "/vesc/high_level/ackermann_cmd"),
-            # ("safety_drive_topic", "/vesc/low_level/input/safety"),
+            ("drive_input_topic", "/vesc/low_level/ackermann_cmd"),
+            ("safety_drive_topic", "/vesc/low_level/input/safety"),
             # for testing in sim
-            ("drive_input_topic", "/input_drive"),
-            ("safety_drive_topic", "/drive"),
+            # ("drive_input_topic", "/input_drive"),
+            # ("safety_drive_topic", "/drive"),
         ]
     )
     keyboard_controller_node = Node(
@@ -44,9 +44,9 @@ def generate_launch_description():
         remappings=[
             ("scan_topic", "/scan"),
             # for real racecar
-            # ("keyboard_drive_topic", "/vesc/high_level/input/nav_0"),
+            ("keyboard_drive_topic", "/vesc/high_level/input/nav_0"),
             # for testing in sim
-            ("keyboard_drive_topic", "/input_drive"),
+            # ("keyboard_drive_topic", "/input_drive"),
         ]
     )
     return LaunchDescription([

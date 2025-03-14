@@ -34,7 +34,7 @@ class KeyboardController(Node):
         self.key_timer = self.create_timer(self.keypress_time, self.key_detector_callback)
 
     def key_detector_callback(self):
-        key = cv2.waitKey(0)
+        key = cv2.waitKey(int(self.keypress_time*1000))
         header = Header(stamp = self.get_clock().now().to_msg())
         if key == ord('w'):
             # forward
