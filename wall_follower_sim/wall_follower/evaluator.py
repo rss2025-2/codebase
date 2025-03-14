@@ -6,6 +6,7 @@ from ackermann_msgs.msg import AckermannDriveStamped, AckermannDrive
 from sensor_msgs.msg import LaserScan
 from std_msgs.msg import Header, Float32
 from visualization_msgs.msg import Marker
+from sklearn.linear_model import RANSACRegressor
 
 import cv2
 import numpy as np
@@ -26,7 +27,7 @@ class Evaluator(Node):
         self.steer_pub = self.create_publisher(Float32, '/steer_angle', 10)
 
         self.declare_parameter('side', 1)
-        self.declare_parameter('desired_distance', 0.5)
+        self.declare_parameter('desired_distance', 0.6)
         self.SIDE = self.get_parameter('side').get_parameter_value().integer_value
         self.DESIRED_DISTANCE = self.get_parameter('desired_distance').get_parameter_value().double_value
 
@@ -65,21 +66,25 @@ class Evaluator(Node):
         if not self.evaluating:
             return
         sliced_scan, front_scan = self.slice_scan(lidar_msg)
-        (a, b, c), distance = self.find_wall_ransac(sliced_scan)
+        # (a, b, c), distance = self.find_wall_ransac(sliced_scan)
+        (a,b), distance = self.find_wall_ransac(sliced_scan)
         if len(front_scan) != 0:
-            (front_a, front_b, front_c), front_distance = self.find_wall_ransac(front_scan)
+            # (front_a, front_b, front_c), front_distance = self.find_wall_ransac(front_scan)
+            (front_a, front_b), front_distance = self.find_wall_ransac(front_scan)
         else:
             front_distance = 10.0
         # self.get_logger().info(f'Wall found: {a}x + {b}y + {c} = 0')
-        VisualizationTools.visualize_wall(a, b, c, self.wall_pub, stamp = self.get_clock().now().to_msg(), color=(0.0,0.0,1.0), frame='/laser')
-        if len(front_scan) != 0:
-            VisualizationTools.visualize_wall(front_a, front_b, front_c, self.front_wall_pub, stamp = self.get_clock().now().to_msg(), color=(1.0,0.0,0.0), frame='/laser')
-        if(abs(math.atan(-front_a/front_b))/np.pi > 0.15): # front line is perpendicular and not some line to the right
+        # VisualizationTools.visualize_wall(a, b, c, self.wall_pub, stamp = self.get_clock().now().to_msg(), color=(0.0,0.0,1.0), frame='/laser')
+        # if len(front_scan) != 0:
+            # VisualizationTools.visualize_wall(front_a, front_b, front_c, self.front_wall_pub, stamp = self.get_clock().now().to_msg(), color=(1.0,0.0,0.0), frame='/laser')
+        # if(abs(math.atan(-front_a/front_b))/np.pi > 0.15): # front line is perpendicular and not some line to the right
+        if abs(math.atan(front_a))/np.pi > 0.15:
             distance = min(distance, front_distance)
-        if(abs(b) < 0.0001):
-            wall_angle = np.pi/2.0
-        else:
-            wall_angle = math.atan(-a/b)
+        # if(abs(b) < 0.0001):
+        #     wall_angle = np.pi/2.0
+        # else:
+            # wall_angle = math.atan(-a/b)
+        wall_angle = math.atan(a)
 
         # data logging
         self.avg_abs_dist = self.avg_abs_dist + abs(distance-self.DESIRED_DISTANCE)
@@ -136,27 +141,43 @@ class Evaluator(Node):
 
     def find_wall_ransac(self, sliced_scan):
         # RANSAC
-        wall_params = ((0.0, 0.0, 0.0), 0.0)
-        best_num = 0
-        count_iters = 0
-        avg_error = 0.0
-        while best_num < self.inlier_num and count_iters < self.num_ransac_iters:
-            i1 = random.randint(0,len(sliced_scan)-1)
-            i2 = random.randint(0,len(sliced_scan)-1)
-            if(i1==i2):
-                continue
-            pair_points = (sliced_scan[i1],sliced_scan[i2])
-            hypothesis_params = self.fit_pair(pair_points)
-            # (a,b,c),_ = hypothesis_params
-            # self.get_logger().info(f'Wall checked in RANSAC: {a}x + {b}y + {c} = 0')
-            num_in, inlier_error = self.num_inliers(hypothesis_params, sliced_scan)
-            if(num_in > best_num):
-                wall_params = hypothesis_params
-                best_num = num_in
-                avg_error = inlier_error
-            count_iters = count_iters + 1
-        self.get_logger().info(f'Wall found with {best_num} inliers in {count_iters} iterations and average inlier error {avg_error}')
-        return wall_params
+        # wall_params = ((0.0, 0.0, 0.0), 0.0)
+        # best_num = 0
+        # count_iters = 0
+        # avg_error = 0.0
+        # while best_num < self.inlier_num and count_iters < self.num_ransac_iters:
+        #     i1 = random.randint(0,len(sliced_scan)-1)
+        #     i2 = random.randint(0,len(sliced_scan)-1)
+        #     if(i1==i2):
+        #         continue
+        #     pair_points = (sliced_scan[i1],sliced_scan[i2])
+        #     hypothesis_params = self.fit_pair(pair_points)
+        #     # (a,b,c),_ = hypothesis_params
+        #     # self.get_logger().info(f'Wall checked in RANSAC: {a}x + {b}y + {c} = 0')
+        #     num_in, inlier_error = self.num_inliers(hypothesis_params, sliced_scan)
+        #     if(num_in > best_num):
+        #         wall_params = hypothesis_params
+        #         best_num = num_in
+        #         avg_error = inlier_error
+        #     count_iters = count_iters + 1
+        # self.get_logger().info(f'Wall found with {best_num} inliers in {count_iters} iterations and average inlier error {avg_error}')
+        # return wall_params
+
+        # Create and fit the RANSAC regressor.
+        x, y = zip(*sliced_scan)
+        x = np.array(x).reshape(-1, 1)
+        y = np.array(y)
+        ransac = RANSACRegressor()
+        ransac.fit(x, y)
+        
+        # Retrieve slope and intercept from the underlying estimator.
+        slope = ransac.estimator_.coef_[0]
+        offset = ransac.estimator_.intercept_
+        
+        # Compute the distance from the origin to the line y = mx + b.
+        distance = np.abs(offset) / np.sqrt(slope**2 + 1)
+
+        return ((slope, offset), distance)
             
     def num_inliers(self, wall_params, points):
         (a, b, c), _ = wall_params
